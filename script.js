@@ -465,7 +465,19 @@ function onPieceGrab(e, slotIndex, pieceEl) {
   }
   document.body.appendChild(ghostEl);
 
-  dragState = { slotIndex, piece, pieceEl, metrics, rows, cols, ghostHalfW: ghostW / 2, ghostHalfH: ghostH / 2 };
+  dragState = {
+    slotIndex,
+    piece,
+    pieceEl,
+    metrics,
+    rows,
+    cols,
+    ghostHalfW: ghostW / 2,
+    ghostHalfH: ghostH / 2,
+    startX: e.clientX,
+    startY: e.clientY,
+    moved: false,
+  };
   updateDrag(e.clientX, e.clientY);
 
   document.addEventListener('pointermove', onDragMove);
@@ -485,10 +497,18 @@ function computeDropCell(clientX, clientY) {
   return { row, col };
 }
 
+const DRAG_MOVE_THRESHOLD = 10;
+
 function updateDrag(clientX, clientY) {
   const x = clientX - dragState.ghostHalfW;
   const y = clientY - DRAG_LIFT - dragState.ghostHalfH;
   ghostEl.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+
+  if (!dragState.moved) {
+    const dx = clientX - dragState.startX;
+    const dy = clientY - dragState.startY;
+    if (Math.hypot(dx, dy) >= DRAG_MOVE_THRESHOLD) dragState.moved = true;
+  }
 
   const { row, col } = computeDropCell(clientX, clientY);
   if (row === dragState.lastRow && col === dragState.lastCol) return;
@@ -525,8 +545,8 @@ function onDragEnd() {
   ghostEl.remove();
   ghostEl = null;
 
-  const { lastRow, lastValid, lastCol, piece, slotIndex, pieceEl } = dragState;
-  if (lastValid) {
+  const { lastRow, lastValid, lastCol, piece, slotIndex, pieceEl, moved } = dragState;
+  if (moved && lastValid) {
     placePiece(lastRow, lastCol, piece, slotIndex);
   } else {
     pieceEl.classList.remove('hidden-piece');
