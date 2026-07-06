@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="theme-color" content="#dcdaf1" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" href="icon-192.png" />
+<title>Block Blast</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+  <header id="header">
+    <div class="score-box score-best">
+      <span class="label">BEST</span>
+      <span id="best">0</span>
+    </div>
+    <div class="score-box score-main">
+      <span class="label">SCORE</span>
+      <span id="score">0</span>
+    </div>
+  </header>
+
+  <div id="board"></div>
+
+  <div id="hint-row">
+    <button id="hint-btn">💡 힌트</button>
+  </div>
+
+  <div id="tray">
+    <div class="tray-slot" data-slot="0"></div>
+    <div class="tray-slot" data-slot="1"></div>
+    <div class="tray-slot" data-slot="2"></div>
+  </div>
+</div>
+
+<div id="gameover-overlay" class="hidden">
+  <div class="gameover-card">
+    <h2>Game Over</h2>
+    <p>점수 <span id="final-score">0</span></p>
+    <button id="restart-btn">다시 시작</button>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
