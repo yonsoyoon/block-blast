@@ -73,6 +73,25 @@ const SHAPE_POOL = [
   [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2], [2, 0], [2, 1], [2, 2]],
 ];
 
+const SHAPE_WEIGHTS = SHAPE_POOL.map((cells) => {
+  const n = cells.length;
+  if (n <= 2) return 5;
+  if (n === 3) return 4;
+  if (n === 4) return 2.2;
+  if (n === 5) return 1;
+  return 0.4;
+});
+const SHAPE_WEIGHT_TOTAL = SHAPE_WEIGHTS.reduce((sum, w) => sum + w, 0);
+
+function pickWeightedShape() {
+  let roll = Math.random() * SHAPE_WEIGHT_TOTAL;
+  for (let i = 0; i < SHAPE_POOL.length; i++) {
+    roll -= SHAPE_WEIGHTS[i];
+    if (roll <= 0) return SHAPE_POOL[i];
+  }
+  return SHAPE_POOL[SHAPE_POOL.length - 1];
+}
+
 const boardEl = document.getElementById('board');
 const trayEl = document.getElementById('tray');
 const scoreEl = document.getElementById('score');
@@ -149,7 +168,7 @@ function shapeDims(cells) {
 }
 
 function randomPiece() {
-  const cells = SHAPE_POOL[Math.floor(Math.random() * SHAPE_POOL.length)];
+  const cells = pickWeightedShape();
   const color = pieceColor(Math.floor(Math.random() * BASE_COLORS.length));
   return { cells, color };
 }
@@ -414,7 +433,8 @@ function clearFullLines(onDone) {
   });
 
   const lines = fullRows.length + fullCols.length;
-  updateScore(lines * 100 + (lines > 1 ? (lines - 1) * 50 : 0));
+  const comboBonus = lines >= 2 ? (lines - 1) * 80 : 0;
+  updateScore(lines * 100 + comboBonus);
   maybeShiftPalette(lines);
 
   setTimeout(() => {
@@ -427,12 +447,34 @@ function clearFullLines(onDone) {
       cell.style.animationDelay = '';
     });
     renderBoard();
+
+    const isPerfectClear = board.every((row) => row.every((cell) => !cell));
+    if (isPerfectClear) {
+      updateScore(300);
+      showBonusPopup('PERFECT CLEAR!', true);
+      if (navigator.vibrate) navigator.vibrate([40, 60, 40, 60, 80]);
+    } else if (lines >= 4) {
+      showBonusPopup('Amazing!');
+    } else if (lines === 3) {
+      showBonusPopup('Excellent!');
+    } else if (lines === 2) {
+      showBonusPopup('Good!');
+    }
+
     onDone();
   }, 460 + maxDelay);
 
   if (navigator.vibrate) {
     navigator.vibrate(lines >= 3 ? [25, 40, 25, 40, 40] : lines === 2 ? [25, 40, 25] : 25);
   }
+}
+
+function showBonusPopup(text, isPerfect = false) {
+  const el = document.createElement('div');
+  el.className = isPerfect ? 'bonus-popup bonus-popup-perfect' : 'bonus-popup';
+  el.textContent = text;
+  boardEl.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
 }
 
 function spawnBurstParticles(cell, color) {
