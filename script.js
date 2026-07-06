@@ -218,11 +218,11 @@ function renderTray() {
   });
 }
 
-function canPlace(row, col, cells) {
+function canPlace(row, col, cells, b = board) {
   for (const [dr, dc] of cells) {
     const rr = row + dr;
     const cc = col + dc;
-    if (rr < 0 || rr >= SIZE || cc < 0 || cc >= SIZE || board[rr][cc]) return false;
+    if (rr < 0 || rr >= SIZE || cc < 0 || cc >= SIZE || b[rr][cc]) return false;
   }
   return true;
 }
@@ -246,20 +246,103 @@ function checkGameOver() {
   }
 }
 
+function cloneBoard(b) {
+  return b.map((row) => row.slice());
+}
+
+function simulatePlace(b, row, col, cells) {
+  for (const [dr, dc] of cells) {
+    b[row + dr][col + dc] = true;
+  }
+}
+
+function simulateClear(b) {
+  const fullRows = [];
+  const fullCols = [];
+  for (let r = 0; r < SIZE; r++) {
+    if (b[r].every((v) => v)) fullRows.push(r);
+  }
+  for (let c = 0; c < SIZE; c++) {
+    if (b.every((row) => row[c])) fullCols.push(c);
+  }
+  fullRows.forEach((r) => b[r].fill(null));
+  fullCols.forEach((c) => {
+    for (let r = 0; r < SIZE; r++) b[r][c] = null;
+  });
+  return fullRows.length + fullCols.length;
+}
+
+function boardQuality(b) {
+  let empty = 0;
+  let holes = 0;
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (b[r][c]) continue;
+      empty++;
+      const blockedUp = r === 0 || !!b[r - 1][c];
+      const blockedDown = r === SIZE - 1 || !!b[r + 1][c];
+      const blockedLeft = c === 0 || !!b[r][c - 1];
+      const blockedRight = c === SIZE - 1 || !!b[r][c + 1];
+      if (blockedUp && blockedDown && blockedLeft && blockedRight) holes++;
+    }
+  }
+  return empty - holes * 8;
+}
+
+function bestPlacementFor(b, piece) {
+  let best = null;
+  const { rows, cols } = shapeDims(piece.cells);
+  for (let r = 0; r <= SIZE - rows; r++) {
+    for (let c = 0; c <= SIZE - cols; c++) {
+      if (!canPlace(r, c, piece.cells, b)) continue;
+      const trial = cloneBoard(b);
+      simulatePlace(trial, r, c, piece.cells);
+      const lines = simulateClear(trial);
+      const score = lines * 1000 + boardQuality(trial);
+      if (!best || score > best.score) {
+        best = { row: r, col: c, lines, board: trial, score };
+      }
+    }
+  }
+  return best;
+}
+
 function findHint() {
-  for (let slotIndex = 0; slotIndex < tray.length; slotIndex++) {
-    const piece = tray[slotIndex];
-    if (!piece) continue;
+  const activeEntries = tray.map((piece, slotIndex) => ({ piece, slotIndex })).filter((e) => e.piece);
+  if (activeEntries.length === 0) return null;
+
+  let overallBest = null;
+
+  for (const entry of activeEntries) {
+    const { piece, slotIndex } = entry;
     const { rows, cols } = shapeDims(piece.cells);
     for (let r = 0; r <= SIZE - rows; r++) {
       for (let c = 0; c <= SIZE - cols; c++) {
-        if (canPlace(r, c, piece.cells)) {
-          return { slotIndex, row: r, col: c, piece };
+        if (!canPlace(r, c, piece.cells)) continue;
+
+        let simBoard = cloneBoard(board);
+        simulatePlace(simBoard, r, c, piece.cells);
+        let totalLines = simulateClear(simBoard);
+
+        const remainingPieces = activeEntries.filter((e) => e !== entry).map((e) => e.piece);
+        for (const remainingPiece of remainingPieces) {
+          const placement = bestPlacementFor(simBoard, remainingPiece);
+          if (placement) {
+            simBoard = placement.board;
+            totalLines += placement.lines;
+          }
+        }
+
+        const totalScore = totalLines * 1000 + boardQuality(simBoard);
+        if (!overallBest || totalScore > overallBest.totalScore) {
+          overallBest = { row: r, col: c, piece, slotIndex, totalScore };
         }
       }
     }
   }
-  return null;
+
+  if (!overallBest) return null;
+  return { row: overallBest.row, col: overallBest.col, piece: overallBest.piece, slotIndex: overallBest.slotIndex };
 }
 
 function showHint() {
