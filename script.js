@@ -438,8 +438,29 @@ function clearFullLines(onDone) {
   const lines = fullRows.length + fullCols.length;
   const comboBonus = lines >= 2 ? (lines - 1) * 80 : 0;
   const streakBonus = comboStreak >= 2 ? (comboStreak - 1) * 60 : 0;
-  updateScore(lines * 100 + comboBonus + streakBonus);
+  const totalFilledNow = board.reduce((sum, row) => sum + row.filter(Boolean).length, 0);
+  const willBePerfectClear = totalFilledNow === toClear.length;
+
+  updateScore(lines * 100 + comboBonus + streakBonus + (willBePerfectClear ? 300 : 0));
   maybeShiftPalette(lines);
+
+  if (willBePerfectClear) {
+    showBonusPopup('PERFECT CLEAR!', 'perfect');
+    if (navigator.vibrate) navigator.vibrate([40, 60, 40, 60, 80]);
+  } else if (comboStreak >= 2) {
+    showBonusPopup(`${comboStreak} COMBO!`, 'combo');
+    if (navigator.vibrate) navigator.vibrate([20, 30, 20, 30, 20, 30]);
+  } else if (lines >= 4) {
+    showBonusPopup('Amazing!', 'big');
+  } else if (lines === 3) {
+    showBonusPopup('Excellent!', 'big');
+  } else if (lines === 2) {
+    showBonusPopup('Good!');
+  }
+
+  if (navigator.vibrate) {
+    navigator.vibrate(lines >= 3 ? [25, 40, 25, 40, 40] : lines === 2 ? [25, 40, 25] : 25);
+  }
 
   setTimeout(() => {
     fullRows.forEach((r) => board[r].fill(null));
@@ -451,29 +472,8 @@ function clearFullLines(onDone) {
       cell.style.animationDelay = '';
     });
     renderBoard();
-
-    const isPerfectClear = board.every((row) => row.every((cell) => !cell));
-    if (isPerfectClear) {
-      updateScore(300);
-      showBonusPopup('PERFECT CLEAR!', 'perfect');
-      if (navigator.vibrate) navigator.vibrate([40, 60, 40, 60, 80]);
-    } else if (comboStreak >= 2) {
-      showBonusPopup(`${comboStreak} COMBO!`, 'combo');
-      if (navigator.vibrate) navigator.vibrate([20, 30, 20, 30, 20, 30]);
-    } else if (lines >= 4) {
-      showBonusPopup('Amazing!');
-    } else if (lines === 3) {
-      showBonusPopup('Excellent!');
-    } else if (lines === 2) {
-      showBonusPopup('Good!');
-    }
-
     onDone();
   }, 460 + maxDelay);
-
-  if (navigator.vibrate) {
-    navigator.vibrate(lines >= 3 ? [25, 40, 25, 40, 40] : lines === 2 ? [25, 40, 25] : 25);
-  }
 }
 
 function showBonusPopup(text, kind = null) {
@@ -482,6 +482,28 @@ function showBonusPopup(text, kind = null) {
   el.textContent = text;
   boardEl.appendChild(el);
   el.addEventListener('animationend', () => el.remove());
+
+  const counts = { perfect: 22, combo: 16, big: 10 };
+  spawnConfetti(counts[kind] || 8);
+}
+
+function spawnConfetti(count) {
+  const rect = boardEl.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  for (let i = 0; i < count; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'confetti-particle';
+    particle.style.left = `${cx}px`;
+    particle.style.top = `${cy}px`;
+    particle.style.background = `hsl(${Math.floor(Math.random() * 360)}, 80%, 62%)`;
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 70 + Math.random() * 110;
+    particle.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+    particle.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
+    document.body.appendChild(particle);
+    particle.addEventListener('animationend', () => particle.remove());
+  }
 }
 
 function spawnBurstParticles(cell, color) {
