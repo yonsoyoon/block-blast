@@ -147,6 +147,32 @@ html, body {
   text-shadow: 0 3px 8px rgba(120, 80, 0, 0.4), 0 0 22px rgba(255, 220, 100, 0.85);
 }
 
+.bonus-popup-combo {
+  font-size: 36px;
+  color: #ff7a45;
+  text-shadow: 0 3px 8px rgba(140, 40, 0, 0.4), 0 0 22px rgba(255, 140, 80, 0.85);
+  animation: bonus-pop 850ms ease-out forwards, bonus-shake 850ms ease-out forwards;
+}
+
+@keyframes bonus-shake {
+  0%,
+  100% {
+    rotate: 0deg;
+  }
+  20% {
+    rotate: -6deg;
+  }
+  40% {
+    rotate: 6deg;
+  }
+  60% {
+    rotate: -4deg;
+  }
+  80% {
+    rotate: 4deg;
+  }
+}
+
 @keyframes bonus-pop {
   0% {
     transform: translate(-50%, -50%) scale(0.4);

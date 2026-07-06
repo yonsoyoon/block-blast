@@ -193,6 +193,7 @@ function renderBoard() {
 }
 
 let dangerActive = false;
+let comboStreak = 0;
 
 function updateDangerState() {
   let filled = 0;
@@ -406,9 +407,11 @@ function clearFullLines(onDone) {
     if (board.every((row) => row[c])) fullCols.push(c);
   }
   if (fullRows.length === 0 && fullCols.length === 0) {
+    comboStreak = 0;
     onDone();
     return;
   }
+  comboStreak += 1;
 
   const toClear = [];
   const seen = new Set();
@@ -434,7 +437,8 @@ function clearFullLines(onDone) {
 
   const lines = fullRows.length + fullCols.length;
   const comboBonus = lines >= 2 ? (lines - 1) * 80 : 0;
-  updateScore(lines * 100 + comboBonus);
+  const streakBonus = comboStreak >= 2 ? (comboStreak - 1) * 60 : 0;
+  updateScore(lines * 100 + comboBonus + streakBonus);
   maybeShiftPalette(lines);
 
   setTimeout(() => {
@@ -451,8 +455,11 @@ function clearFullLines(onDone) {
     const isPerfectClear = board.every((row) => row.every((cell) => !cell));
     if (isPerfectClear) {
       updateScore(300);
-      showBonusPopup('PERFECT CLEAR!', true);
+      showBonusPopup('PERFECT CLEAR!', 'perfect');
       if (navigator.vibrate) navigator.vibrate([40, 60, 40, 60, 80]);
+    } else if (comboStreak >= 2) {
+      showBonusPopup(`${comboStreak} COMBO!`, 'combo');
+      if (navigator.vibrate) navigator.vibrate([20, 30, 20, 30, 20, 30]);
     } else if (lines >= 4) {
       showBonusPopup('Amazing!');
     } else if (lines === 3) {
@@ -469,9 +476,9 @@ function clearFullLines(onDone) {
   }
 }
 
-function showBonusPopup(text, isPerfect = false) {
+function showBonusPopup(text, kind = null) {
   const el = document.createElement('div');
-  el.className = isPerfect ? 'bonus-popup bonus-popup-perfect' : 'bonus-popup';
+  el.className = kind ? `bonus-popup bonus-popup-${kind}` : 'bonus-popup';
   el.textContent = text;
   boardEl.appendChild(el);
   el.addEventListener('animationend', () => el.remove());
@@ -682,6 +689,7 @@ function onDragEnd() {
 function startNewGame() {
   board = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
   score = 0;
+  comboStreak = 0;
   resetScoreDisplay();
   paletteHue = 0;
   bgIndex = 0;
